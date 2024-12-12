@@ -1,2 +1,2 @@
 # SQLScripts
-Store my useful SQL Scripts
+A repository for my useful SQL Scripts
