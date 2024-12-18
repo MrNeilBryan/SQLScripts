@@ -1,4 +1,4 @@
-You • USE [master]
+USE [master]
 GO
 SET NOCOUNT ON;
 GO
@@ -135,7 +135,6 @@ INSERT dbo.tbl_Test_Partition ([Date],AccRef,Amount) SELECT [Date], AccRef, Amou
 GO
 
 
-You • 
 --------------------------------------------------------------------------------------------
 -- Testing
 -------------------------------------------------------------------------------------------
