@@ -1,4 +1,4 @@
-USE [master]
+You • USE [master]
 GO
 SET NOCOUNT ON;
 GO
@@ -9,11 +9,10 @@ GO
 ----------------------------------------------------------------------------------------------------------------
 -- Drop SlowSQLServer Database
 ----------------------------------------------------------------------------------------------------------------
-IF EXISTS (SELECT 1 FROM sys.databases where [name] = 'SlowSQLServer')
-BEGIN
-	EXEC msdb.dbo.sp_delete_database_backuphistory @database_name = N'SlowSQLServer'
-	ALTER DATABASE SlowSQLServer SET  SINGLE_USER WITH ROLLBACK IMMEDIATE
-	DROP DATABASE SlowSQLServer
+IF EXISTS (SELECT 1 FROM sys.databases where [name] = 'SlowSQLServer') BEGIN
+    EXEC msdb.dbo.sp_delete_database_backuphistory @database_name = N'SlowSQLServer'
+    ALTER DATABASE SlowSQLServer SET  SINGLE_USER WITH ROLLBACK IMMEDIATE
+    DROP DATABASE SlowSQLServer
 END
 GO
  
@@ -23,7 +22,7 @@ GO
 ----------------------------------------------------------------------------------------------------------------
 CREATE DATABASE SlowSQLServer
 GO
-ALTER DATABASE SlowSQLServer SET RECOVERY SIMPLE;
+ALTER DATABASE SlowSQLServer SET RECOVERY SIMPLE; 
 GO
 
 USE [SlowSQLServer]
@@ -37,8 +36,7 @@ GO
 --------------------------------------------------------------------------------------------
 -- Create a partition function called pfMonths with 50 vears of months 2000 - 2050
 --------------------------------------------------------------------------------------------
-IF NOT EXISTS (SELECT 1 FROM sys.partition_functions WHERE [name] = 'pfMonths') 
-BEGIN
+IF NOT EXISTS (SELECT 1 FROM sys.partition_functions WHERE [name] = 'pfMonths') BEGIN
         DECLARE @DT DATE ='20000101'
         DECLARE @Str NVARCHAR(MAX) = N' CREATE PARTITION FUNCTION pfMonths (DATE) AS RANGE RIGHT FOR VALUES (';
         WHILE @DT < '20510101'
@@ -49,45 +47,45 @@ BEGIN
 
         SET @Str = SUBSTRING(@Str, 1, LEN(@Str)-1) + ')'
         EXEC sp_executesql @stmt = @Str;
-        PRINT 'Partition Function pfMonths created';
-END
-ELSE
+        PRINT 'Partition Function pfMonths created'; 
+END 
+ELSE 
 BEGIN
-        PRINT 'Partition Function pfMonths already exists';
-END
+        PRINT 'Partition Function pfMonths already exists'; 
+      END 
 GO
 
 --------------------------------------------------------------------------------------------
 -- Create the partition schema psMonths for partition function pfMonths
 --------------------------------------------------------------------------------------------
-IF NOT EXISTS (SELECT 1 FROM sys.partition_schemes WHERE [name] = 'psMonths')
+IF NOT EXISTS (SELECT 1 FROM sys.partition_schemes WHERE [name] = 'psMonths') 
 BEGIN
-        CREATE PARTITION SCHEME psMonths AS PARTITION pfMonths ALL TO ([Primary]);
-        PRINT 'Partition Scheme psMonths created';
-END
-ELSE
+    CREATE PARTITION SCHEME psMonths AS PARTITION pfMonths ALL TO ([Primary]);
+    PRINT 'Partition Scheme psMonths created'; 
+END 
+ELSE 
 BEGIN
-        PRINT 'Partition Scheme psMonths already exists';
-END
+    PRINT 'Partition Scheme psMonths already exists'; 
+END 
 GO
 
 --------------------------------------------------------------------------------------------
 -- Drop the non partition work table
 --------------------------------------------------------------------------------------------
-IF OBJECT_ID('dbo.tbl_Test_Non_Partition') IS NOT NULL
-BEGIN
-DROP TABLE do.tbl_Test_Non_Partition
-END
+IF OBJECT_ID('dbo.tbl_Test_Non_Partition') IS NOT NULL 
+BEGIN 
+    DROP TABLE do.tbl_Test_Non_Partition 
+END 
 PRINT 'Dropped table dbo.tbl Test Non Partition'
 GO
 
 --------------------------------------------------------------------------------------------
 --  Drop the partition work table
 --------------------------------------------------------------------------------------------
-IF OBJECT_ID('dbo.tbl_Test_Partition') IS NOT NULL
+IF OBJECT_ID('dbo.tbl_Test_Partition') IS NOT NULL 
 BEGIN
-        DROP TABLE dbo.tbl_Test_Partition
-END
+    DROP TABLE dbo.tbl_Test_Partition 
+END 
 PRINT 'Dropped table dbo.tbl_Test_ Partition'
 GO
 
@@ -95,19 +93,21 @@ GO
 --------------------------------------------------------------------------------------------
 -- Create the partition work table
 --------------------------------------------------------------------------------------------
-CREATE TABLE dbo.tbl_Test_Partition(
-[Date] [date] NOT NULL , ID INT NOT NULL IDENTITY(1,1) ,
-[AccRef] BIGINT NOT NULL,
-[Amount] [money] NULL ) ON psMonths ( [Date])
+CREATE TABLE dbo.tbl_Test_Partition([Date] [date] NOT NULL , 
+                                    EmployeeID INT NOT NULL IDENTITY(1,1) , 
+                                    [AccRef] BIGINT NOT NULL, 
+                                    [Amount] [money] NULL) 
+             ON psMonths ( [Date]) 
 PRINT 'Recreated dbo.tbl_Test_Partition'
 GO
 --------------------------------------------------------------------------------------------
 -- Create the non partition work table
 --------------------------------------------------------------------------------------------
-CREATE TABLE dbo.tbl_Test_Non_Partition(
-[Date] [date] NOT NULL ,ID INT NOT NULL IDENTITY(1,1),
-[AccRef] [bigint] NOT NULL,
-[Amount] [money] NULL, PRIMARY KEY CLUSTERED ( ID)
+CREATE TABLE dbo.tbl_Test_Non_Partition( [Date] [date] NOT NULL ,
+                                         EmployeeID INT NOT NULL IDENTITY(1,1), 
+                                         [AccRef] [bigint] NOT NULL, 
+                                         [Amount] [money] NULL,
+                                         PRIMARY KEY CLUSTERED (EmployeeID ) 
 ) ON [PRIMARY]
 PRINT 'Recreated dbo.tbl_Test_Non_Partition'
 GO
@@ -116,35 +116,26 @@ GO
 -- Populate the non partition work table
 --------------------------------------------------------------------------------------------
 DECLARE @i INT = 1 ;
-DECLARE @startDate AS DATE = '20130101';
-DECLARE @EndDate AS DATE = '20231231';
-DECLARE @DT DATE
-WHILE (@i <= 100000)
+DECLARE @startDate AS DATE = '20130101'; 
+DECLARE @EndDate AS DATE = '20231231'; 
+DECLARE @DT DATE 
+WHILE (@i <= 10000000) 
 BEGIN
         SET @DT = DATEADD(DAY, RAND(CHECKSUM(NEWID()))* (1+DATEDIFF (DAY, @startDate, @EndDate)) , @StartDate) ;
         INSERT dbo.tbl_Test_Non_Partition ([Date], [AccRef], [Amount]) SELECT @DT, CAST (@I AS NVARCHAR (256)), 
-																						DATEDIFF(DAY, @DT, GETDATE());
+                                                                                        DATEDIFF(DAY, @DT, GETDATE());
         SET @i +=1
 END
 PRINT 'Populated the non partition work table'
 GO
 --------------------------------------------------------------------------------------------
 -- Populate the partition work table
---------------------------------------------------------------------------------------------�
-INSERT dbo.tbl_Test_Partition ([Date],AccRef,Amount)
-SELECT [Date], AccRef, Amount
-FROM dbo.tbl_Test_Non_Partition
-PRINT 'Populated the partition work table';
-GO
---------------------------------------------------------------------------------------------
--- Indexes created
---------------------------------------------------------------------------------------------
---DROP INDEX NCI_DT ON dbo.tbl_Test_Partition (Date) ON psMonths ([Date]);
---DROP INDEX NCI_DT ON dbo.tbl_Test_Non_Partition (Date)
---PRINT 'Indexes created'
+--------------------------------------------------------------------------------------------—
+INSERT dbo.tbl_Test_Partition ([Date],AccRef,Amount) SELECT [Date], AccRef, Amount FROM dbo.tbl_Test_Non_Partition PRINT 'Populated the partition work table'; 
 GO
 
 
+You • 
 --------------------------------------------------------------------------------------------
 -- Testing
 -------------------------------------------------------------------------------------------
@@ -155,8 +146,14 @@ SET STATISTICS IO ON
 SET STATISTICS TIME ON
 GO
 
+PRINT '-------------------------Selecting from dbo.tbl_Test_Partition----------------------------------------';
+PRINT 'Selecting from dbo.tbl_Test_Partition';
 SELECT COUNT(1) FROM dbo.tbl_Test_Partition WHERE [date] >= '20220101' AND [date] <= '20220131'
+PRINT '----------------------------------------------------------------------------------------------------';
+PRINT '-------------------------Selecting from dbo.tbl_Test_Non_Partition----------------------------------------';
+PRINT 'Selecting from dbo.tbl_Test_Non_Partition';
 SELECT COUNT(1) FROM dbo.tbl_Test_Non_Partition WHERE [date] >= '20220101' AND [date] <= '20220131'
+PRINT '----------------------------------------------------------------------------------------------------';
 
 
 GO
@@ -165,33 +162,33 @@ GO
 --------------------------------------------------------------------------------------------
 -- Show partitions
 -------------------------------------------------------------------------------------------
-SELECT $PARTITION.pfMonths([Date]) PartitionID, * FROM dbo.tbl_Test_Partition ORDER BY [Date]
+SELECT $PARTITION.pfMonths([Date]) PartitionID, * FROM dbo.tbl_Test_Partition ORDER BY [Date] 
 GO
 
 --------------------------------------------------------------------------------------------
 -- Delete all data from a partition usig TRUNCATE - INSTANT 2016 feature
 --------------------------------------------------------------------------------------------
-TRUNCATE TABLE  dbo.tbl_Test_Partition WITH (PARTITIONS (160))
+TRUNCATE TABLE  dbo.tbl_Test_Partition WITH (PARTITIONS (160)) 
 GO
 --
 -- Check that there is no longer any rows in dbo.tbl_Test_Partition for Partition 160
 --
-SELECT * FROM  dbo.tbl_Test_Partition WHERE $PARTITION.pfMonths([Date]) = 160
+SELECT * FROM  dbo.tbl_Test_Partition WHERE $PARTITION.pfMonths([Date]) = 160 
 GO
 
 --------------------------------------------------------------------------------------------
 -- Move data from a partition to a partition on another table
 --------------------------------------------------------------------------------------------
-IF OBJECT_ID('dbo.tbl_Transferred_Data','U') IS NOT NULL
-BEGIN
-	DROP TABLE dbo.tbl_Transferred_Data;
+IF OBJECT_ID('dbo.tbl_Transferred_Data','U') IS NOT NULL BEGIN
+    DROP TABLE dbo.tbl_Transferred_Data;
 END
 GO
 CREATE TABLE dbo.tbl_Transferred_Data
 (
-	[Date] [date] NOT NULL , ID INT NOT NULL IDENTITY(1,1) ,
-	[AccRef] BIGINT NOT NULL,
-	[Amount] [money] NULL
+    [Date] [date] NOT NULL , 
+    EmployeeID INT NOT NULL IDENTITY(1,1) ,
+    [AccRef] BIGINT NOT NULL,
+    [Amount] [money] NULL 
 ) ON psMonths ( [Date])
 GO
 --
@@ -201,8 +198,8 @@ ALTER TABLE dbo.tbl_Test_Partition SWITCH PARTITION 159 TO dbo.tbl_Transferred_D
 --
 -- Check that there is no longer any rows in dbo.tbl_Test_Partition for Partition 159
 --
-SELECT * FROM  dbo.tbl_Test_Partition WHERE $PARTITION.pfMonths([Date]) = 159
+SELECT $PARTITION.pfMonths([Date]),* FROM  dbo.tbl_Test_Partition WHERE $PARTITION.pfMonths([Date]) = 159
 --
 -- Check that the Partition 159 rows are now in the dbo.tbl_Transferred_Data table.
 --
-SELECT $PARTITION.pfMonths([Date]),* FROM dbo.tbl_Transferred_Data
+SELECT $PARTITION.pfMonths([Date]),* FROM dbo.tbl_Transferred_Data Sent 
